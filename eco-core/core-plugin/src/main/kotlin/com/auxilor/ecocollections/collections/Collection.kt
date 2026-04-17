@@ -82,9 +82,9 @@ class Collection(
     val allTierRewards: Chain?
 
     val completionRewardEffects: Chain? = Effects.compileChain(
-        config.getSubsections("completion-rewards"),
+        config.getSubsections("completion-effects"),
         NormalExecutorFactory.create(),
-        ViolationContext(plugin, "Collection $id completion-rewards")
+        ViolationContext(plugin, "Collection $id completion-effects")
     )
 
     val countKey = PersistentDataKey(
@@ -118,13 +118,13 @@ class Collection(
     init {
         val tierRewardsMutable = mutableMapOf<Int, Chain?>()
         var parsedAllTierRewards: Chain? = null
-        for (subsection in config.getSubsections("tier-rewards")) {
+        for (subsection in config.getSubsections("tier-up-effects")) {
             val tierValue = subsection.getString("tier")
             if (tierValue.equals("all", ignoreCase = true)) {
                 parsedAllTierRewards = Effects.compileChain(
                     subsection.getSubsections("effects"),
                     NormalExecutorFactory.create(),
-                    ViolationContext(plugin, "Collection $id tier-rewards (all)")
+                    ViolationContext(plugin, "Collection $id tier-up-effects (all)")
                 )
             } else {
                 val tier = tierValue.toIntOrNull()
@@ -132,7 +132,7 @@ class Collection(
                     tierRewardsMutable[tier] = Effects.compileChain(
                         subsection.getSubsections("effects"),
                         NormalExecutorFactory.create(),
-                        ViolationContext(plugin, "Collection $id tier-rewards (tier $tier)")
+                        ViolationContext(plugin, "Collection $id tier-up-effects (tier $tier)")
                     )
                 }
             }
@@ -155,6 +155,22 @@ class Collection(
         for (counter in countMethods) {
             counter.unbind()
         }
+    }
+
+    fun getRewardMessages(tier: Int): List<String> {
+        if (!config.has("reward-messages")) return emptyList()
+
+        val messages = mutableListOf<String>()
+
+        if (config.has("reward-messages.all")) {
+            messages.addAll(config.getStrings("reward-messages.all"))
+        }
+
+        if (config.has("reward-messages.$tier")) {
+            messages.addAll(config.getStrings("reward-messages.$tier"))
+        }
+
+        return messages
     }
 
     fun getTierForCount(count: Double): Int {

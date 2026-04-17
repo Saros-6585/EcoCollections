@@ -3,7 +3,11 @@ package com.auxilor.ecocollections.gui
 import com.willfp.eco.core.gui.menu
 import com.willfp.eco.core.gui.onLeftClick
 import com.willfp.eco.core.gui.slot
+import com.willfp.eco.core.gui.slot.ConfigSlot
+import com.willfp.eco.core.gui.slot.FillerMask
+import com.willfp.eco.core.gui.slot.MaskItems
 import com.willfp.eco.core.gui.slot.Slot
+import com.willfp.eco.core.items.Items
 import com.willfp.eco.util.StringUtils
 import com.willfp.eco.util.toNumeral
 import com.auxilor.ecocollections.api.getCollectionCount
@@ -23,14 +27,16 @@ object CollectionDetailGUI {
         )
         val rows = plugin.configYml.getInt("gui.detail.rows")
 
+        val maskItems = MaskItems.fromItemNames(plugin.configYml.getStrings("gui.detail.mask.materials"))
+        val maskPattern = plugin.configYml.getStrings("gui.detail.mask.pattern").toTypedArray()
+
         val playerTier = player.getCollectionTier(collection)
         val playerCount = player.getCollectionCount(collection)
 
-        val centerRow = rows / 2
-        val centerCol = 5
+        val progressionPattern = plugin.configYml.getStrings("gui.detail.progression-slots.pattern")
+        val tierPositions = parseProgressionPattern(progressionPattern)
 
         val centerSlot = buildCenterSlot(player, collection, playerTier, playerCount)
-        val tierSlots = calculateTierPositions(collection.maxTier, rows)
 
         val backRow = rows
         val backCol = 1
@@ -45,10 +51,21 @@ object CollectionDetailGUI {
         val theMenu = menu(rows) {
             setTitle(title)
 
-            setSlot(centerRow, centerCol, centerSlot)
+            setMask(
+                FillerMask(
+                    maskItems,
+                    *maskPattern
+                )
+            )
+
+            setSlot(
+                plugin.configYml.getInt("gui.detail.info-icon.location.row"),
+                plugin.configYml.getInt("gui.detail.info-icon.location.column"),
+                centerSlot
+            )
 
             for (tier in 1..collection.maxTier) {
-                val position = tierSlots.getOrNull(tier - 1) ?: continue
+                val position = tierPositions.getOrNull(tier - 1) ?: continue
                 val tierSlotItem = buildTierSlot(collection, tier, playerTier, playerCount)
                 setSlot(position.first, position.second, tierSlotItem)
             }
@@ -65,6 +82,14 @@ object CollectionDetailGUI {
             })
 
             setSlot(backRow, 9, rankSlot)
+
+            for (config in plugin.configYml.getSubsections("gui.detail.custom-slots")) {
+                setSlot(
+                    config.getInt("row"),
+                    config.getInt("column"),
+                    ConfigSlot(config)
+                )
+            }
         }
 
         theMenu.open(player)
@@ -111,59 +136,57 @@ object CollectionDetailGUI {
         playerTier: Int,
         playerCount: Double
     ): Slot {
-        val reached = playerTier >= tier
         val isMaxTier = tier == collection.maxTier
         val requirement = collection.tierRequirements[tier - 1]
 
-        val material = when {
-            isMaxTier && reached -> Material.GOLD_BLOCK
-            reached -> Material.LIME_STAINED_GLASS_PANE
-            else -> Material.GRAY_STAINED_GLASS_PANE
+        val state = when {
+            isMaxTier && playerTier >= tier -> "completed"
+            playerTier >= tier -> "reached"
+            tier == playerTier + 1 -> "in-progress"
+            else -> "locked"
         }
 
-        val tierItem = ItemStack(material)
+        val configKey = "gui.detail.progression-slots.$state"
+
+        val tierItem = Items.lookup(plugin.configYml.getString("$configKey.item")).item.clone()
         val meta = tierItem.itemMeta
 
         if (meta != null) {
-            val tierColor = when {
-                isMaxTier && reached -> "&6"
-                reached -> "&a"
-                else -> "&7"
+            val percent = if (requirement > 0) {
+                (playerCount / requirement * 100).coerceIn(0.0, 100.0).toInt().toString()
+            } else {
+                "100"
             }
+
+            fun String.applyPlaceholders() = this
+                .replace("%tier%", tier.toString())
+                .replace("%tier_numeral%", tier.toNumeral())
+                .replace("%count%", playerCount.toLong().toString())
+                .replace("%required%", requirement.toLong().toString())
+                .replace("%percent%", percent)
+                .replace("%collection_name%", collection.name)
+
             meta.setDisplayName(
-                StringUtils.format("${tierColor}Tier ${tier.toNumeral()}")
+                StringUtils.format(
+                    plugin.configYml.getString("$configKey.name").applyPlaceholders()
+                )
             )
 
-            val lore = mutableListOf<String>()
+            val rewardMessages = collection.getRewardMessages(tier).map {
+                StringUtils.format(it.applyPlaceholders())
+            }
 
-            lore.add(StringUtils.format("&7Requires: &e${requirement.toLong()} &7items"))
-
-            if (!reached) {
-                val percent = if (requirement > 0) {
-                    (playerCount / requirement * 100).coerceIn(0.0, 100.0).toInt()
+            val lore = plugin.configYml.getStrings("$configKey.lore").flatMap { line ->
+                if (line.contains("%rewards%")) {
+                    if (rewardMessages.isEmpty()) {
+                        emptyList()
+                    } else {
+                        val margin = line.length - line.trimStart().length
+                        rewardMessages.map { " ".repeat(margin) + it }
+                    }
                 } else {
-                    100
+                    listOf(StringUtils.format(line.applyPlaceholders()))
                 }
-                lore.add(StringUtils.format("&7Progress: &e${playerCount.toLong()}&7/&e${requirement.toLong()} &8(&e${percent}%&8)"))
-            } else {
-                lore.add(StringUtils.format("&a&lCompleted"))
-            }
-
-            lore.add("")
-            lore.add(StringUtils.format("&7Rewards:"))
-
-            val tierChain = collection.tierRewards[tier]
-            if (tierChain != null) {
-                lore.add(StringUtils.format("  &8- &fTier $tier rewards"))
-            }
-
-            val allChain = collection.allTierRewards
-            if (allChain != null) {
-                lore.add(StringUtils.format("  &8- &fEvery tier rewards"))
-            }
-
-            if (isMaxTier && collection.completionRewardEffects != null) {
-                lore.add(StringUtils.format("  &8- &6Completion bonus"))
             }
 
             meta.lore = lore
@@ -193,20 +216,22 @@ object CollectionDetailGUI {
         return slot(rankItem)
     }
 
-    private fun calculateTierPositions(maxTier: Int, rows: Int): List<Pair<Int, Int>> {
-        val positions = mutableListOf<Pair<Int, Int>>()
-        val centerRow = rows / 2
-        val centerCol = 5
+    private fun parseProgressionPattern(pattern: List<String>): List<Pair<Int, Int>> {
+        val slots = mutableListOf<Triple<Int, Int, Int>>() // row, column, order
 
-        for (row in 2 until rows) {
-            for (col in 2..8) {
-                if (row == centerRow && col == centerCol) continue
-                positions.add(Pair(row, col))
-                if (positions.size >= maxTier) return positions
+        for ((rowIndex, line) in pattern.withIndex()) {
+            for ((colIndex, char) in line.withIndex()) {
+                val order = when (char) {
+                    '0' -> continue
+                    in '1'..'9' -> char - '0'
+                    in 'a'..'z' -> char - 'a' + 10
+                    else -> continue
+                }
+                slots.add(Triple(rowIndex + 1, colIndex + 1, order))
             }
         }
 
-        return positions
+        return slots.sortedBy { it.third }.map { Pair(it.first, it.second) }
     }
 
     private fun substituteDetailPlaceholders(

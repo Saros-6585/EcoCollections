@@ -62,7 +62,7 @@ gui:
     custom-slots: []
 
   detail:
-    title: "&8%collection_name%"
+    title: "&8%collection_name% Collection"
     rows: 6
     mask:
       materials:

@@ -1,8 +1,10 @@
 package com.auxilor.ecocollections.commands
 
+import com.auxilor.ecocollections.collections.Collections
 import com.auxilor.ecocollections.plugin
 import com.willfp.eco.core.command.impl.Subcommand
 import com.willfp.eco.util.StringUtils
+import com.willfp.eco.util.toNiceString
 import org.bukkit.command.CommandSender
 
 object SubcommandReload : Subcommand(
@@ -12,16 +14,11 @@ object SubcommandReload : Subcommand(
     false
 ) {
     override fun onExecute(sender: CommandSender, args: List<String>) {
-        this.plugin.reload()
         sender.sendMessage(
-            StringUtils.format(
-                plugin.langYml.getString("commands.reload-success")
-            )
+            plugin.langYml.getMessage("commands.reloaded", StringUtils.FormatOption.WITHOUT_PLACEHOLDERS)
+                .replace("%time%", plugin.reloadWithTime().toNiceString())
+                .replace("%count%", Collections.values().size.toString())
         )
-    }
-
-    override fun tabComplete(sender: CommandSender, args: List<String>): List<String> {
-        return emptyList()
     }
 }
 

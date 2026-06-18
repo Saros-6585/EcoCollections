@@ -19,6 +19,11 @@ gui:
     - ""
     - "&8Click to view tiers"
 
+# Items that can be submitted in the GUI when collections.manual-collect-mode is true.
+manual-collect:
+  items:
+    - acacia_log
+
 # There are two ways to specify tier count requirements:
 #  1. A formula to calculate for infinite tiers
 #  2. A list of count requirements for each tier

@@ -15,6 +15,11 @@ collections:
   # itself does not enforce filters — this only emits warnings.
   warn-on-missing-dupe-filter: true
 
+  # If true, players do not gain collection count automatically,
+  # and the 'count-methods' option in each collection file is ignored.
+  # Players will be able to click on the item in the GUI to consume the item and get a count.
+  manual-collect-mode: false
+
 # GUI
 gui:
   cache-ttl: 5000   # ms — how long rendered lore is cached

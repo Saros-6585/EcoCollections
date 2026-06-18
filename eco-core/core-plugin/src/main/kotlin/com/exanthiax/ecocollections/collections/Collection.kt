@@ -60,9 +60,14 @@ class Collection(
 
     val maxTier: Int = tierRequirements.size
 
-    val countMethods: List<Counter> = config.getSubsections("count-methods").mapNotNull {
-        Counters.compile(it, ViolationContext(plugin, "Collection $id count-methods"))
-    }
+    val countMethods: List<Counter> =
+        if (plugin.configYml.getBool("collections.manual-collect-mode")) {
+            emptyList()
+        } else {
+            config.getSubsections("count-methods").mapNotNull {
+                Counters.compile(it, ViolationContext(plugin, "Collection $id count-methods"))
+            }
+        }
 
     val unlockConditions: ConditionList = Conditions.compile(
         config.getSubsections("unlock-conditions"),
@@ -93,6 +98,9 @@ class Collection(
     val guiPage: Int = config.getInt("gui.position.page").coerceAtLeast(1)
 
     val guiLore: List<String> = config.getStrings("gui.lore")
+
+    val manualCollectItems: List<TestableItem> = config.getStrings("manual-collect.items")
+        .map { Items.lookup(it) }
 
     val tierRewards: Map<Int, Chain?>
     val allTierRewards: Chain?
@@ -158,6 +166,10 @@ class Collection(
     }
 
     override fun onRegister() {
+        if (plugin.configYml.getBool("collections.manual-collect-mode")) {
+            return
+        }
+
         val accumulator = CollectionCountAccumulator(this)
         for (counter in countMethods) {
             counter.bind(accumulator)
@@ -301,6 +313,7 @@ class Collection(
 
     private fun checkDupeFilters() {
         if (!plugin.configYml.getBool("collections.warn-on-missing-dupe-filter")) return
+        if (plugin.configYml.getBool("collections.manual-collect-mode")) return
 
         for (subsection in config.getSubsections("count-methods")) {
             val trigger = subsection.getString("trigger").lowercase()

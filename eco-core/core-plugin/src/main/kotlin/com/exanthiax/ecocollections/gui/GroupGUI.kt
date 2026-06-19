@@ -1,13 +1,9 @@
 package com.exanthiax.ecocollections.gui
 
 import com.willfp.eco.core.gui.addPage
+import com.willfp.eco.core.gui.addPageChanger
 import com.willfp.eco.core.gui.menu
-import com.willfp.eco.core.gui.menu.MenuLayer
-import com.willfp.eco.core.gui.onEvent
 import com.willfp.eco.core.gui.onLeftClick
-import com.willfp.eco.core.gui.onRightClick
-import com.willfp.eco.core.gui.onShiftRightClick
-import com.willfp.eco.core.gui.page.PageChangeEvent
 import com.willfp.eco.core.gui.page.PageChanger
 import com.willfp.eco.core.gui.slot
 import com.willfp.eco.core.gui.slot.ConfigSlot
@@ -15,12 +11,9 @@ import com.willfp.eco.core.gui.slot.FillerMask
 import com.willfp.eco.core.gui.slot.MaskItems
 import com.willfp.eco.core.gui.slot.Slot
 import com.willfp.eco.core.items.Items
-import com.willfp.eco.core.items.TestableItem
-import com.willfp.eco.core.items.builder.ItemStackBuilder
 import com.willfp.eco.core.sound.PlayableSound
 import com.willfp.eco.util.StringUtils
 import com.willfp.eco.util.toNumeral
-import com.exanthiax.ecocollections.api.giveCollectionCount
 import com.exanthiax.ecocollections.api.getCollectionCount
 import com.exanthiax.ecocollections.api.getCollectionTier
 import com.exanthiax.ecocollections.api.isCollectionUnlocked
@@ -29,17 +22,13 @@ import com.exanthiax.ecocollections.collections.CollectionRank
 import com.exanthiax.ecocollections.collections.CollectionsLeaderboard.getCollectionRank
 import com.exanthiax.ecocollections.groups.CollectionGroup
 import com.exanthiax.ecocollections.plugin
-import com.willfp.eco.core.integrations.afk.AFKManager
-import com.willfp.libreforge.EmptyProvidedHolder
-import com.willfp.libreforge.toDispatcher
-import org.bukkit.GameMode
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 
 object GroupGUI {
 
-    fun open(player: Player, group: CollectionGroup, bypassMode: Boolean = false, page: Int = 1) {
+    fun open(player: Player, group: CollectionGroup, bypassMode: Boolean = false) {
         val titleTemplate = plugin.configYml.getString("gui.group.title")
             .replace("%group_name%", group.name)
         val rows = plugin.configYml.getInt("gui.group.rows")
@@ -51,48 +40,17 @@ object GroupGUI {
         val showLeaderboardRank = plugin.configYml.getBool("leaderboards.show-in-group-gui")
 
         val maxPage = collectionsInGroup.maxOfOrNull { it.guiPage }?.coerceAtLeast(1) ?: 1
-        val targetPage = page.coerceIn(1, maxPage)
 
-        fun renderTitle(page: Int) = StringUtils.format(
-            titleTemplate
-                .replace("%page%", page.toString())
-                .replace("%max_page%", maxPage.toString())
-        )
+        val formattedTitle = StringUtils.format(titleTemplate)
+        val pageChangeSound = PlayableSound.create(plugin.configYml.getSubsection("gui.group.page-change-sound"))
 
         val theMenu = menu(rows) {
-            setTitle(renderTitle(targetPage))
+            title = formattedTitle
 
             maxPages(maxPage)
-            defaultPage { targetPage }
 
-            onEvent<PageChangeEvent> { eventPlayer, _, event ->
-                @Suppress("DEPRECATION")
-                eventPlayer.openInventory.setTitle(renderTitle(event.newPage))
-            }
-
-            addComponent(
-                MenuLayer.TOP,
-                plugin.configYml.getInt("gui.group.prev-page.location.row"),
-                plugin.configYml.getInt("gui.group.prev-page.location.column"),
-                PageChanger(
-                    ItemStackBuilder(Items.lookup(plugin.configYml.getString("gui.group.prev-page.material")))
-                        .setDisplayName(StringUtils.format(plugin.configYml.getString("gui.group.prev-page.name")))
-                        .build(),
-                    PageChanger.Direction.BACKWARDS
-                )
-            )
-
-            addComponent(
-                MenuLayer.TOP,
-                plugin.configYml.getInt("gui.group.next-page.location.row"),
-                plugin.configYml.getInt("gui.group.next-page.location.column"),
-                PageChanger(
-                    ItemStackBuilder(Items.lookup(plugin.configYml.getString("gui.group.next-page.material")))
-                        .setDisplayName(StringUtils.format(plugin.configYml.getString("gui.group.next-page.name")))
-                        .build(),
-                    PageChanger.Direction.FORWARDS
-                )
-            )
+            addPageChanger(plugin.configYml, "gui.group.prev-page", PageChanger.Direction.BACKWARDS, pageChangeSound)
+            addPageChanger(plugin.configYml, "gui.group.next-page", PageChanger.Direction.FORWARDS, pageChangeSound)
 
             for (page in 1..maxPage) {
                 addPage(page) {
@@ -126,7 +84,7 @@ object GroupGUI {
                             continue
                         }
 
-                        val builtSlot = buildCollectionSlot(player, group, bypassMode, collection, showLeaderboardRank)
+                        val builtSlot = buildCollectionSlot(player, collection, showLeaderboardRank)
                         if (builtSlot != null) {
                             setSlot(collection.guiRow, collection.guiColumn, builtSlot)
                         }
@@ -152,8 +110,6 @@ object GroupGUI {
 
     private fun buildCollectionSlot(
         player: Player,
-        group: CollectionGroup,
-        bypassMode: Boolean,
         collection: Collection,
         showLeaderboardRank: Boolean
     ): Slot? {
@@ -166,7 +122,7 @@ object GroupGUI {
                 return null
             }
 
-            return buildUnlockedCollectionSlot(player, group, bypassMode, collection, tier, showLeaderboardRank)
+            return buildUnlockedCollectionSlot(player, collection, tier, showLeaderboardRank)
         } else {
             if (collection.hideWhenLocked) {
                 return null
@@ -182,8 +138,6 @@ object GroupGUI {
 
     private fun buildUnlockedCollectionSlot(
         player: Player,
-        group: CollectionGroup,
-        bypassMode: Boolean,
         collection: Collection,
         tier: Int,
         showLeaderboardRank: Boolean
@@ -226,95 +180,7 @@ object GroupGUI {
             onLeftClick { _, _, _, _ ->
                 CollectionDetailGUI.open(player, collection)
             }
-
-            if (plugin.configYml.getBool("collections.manual-collect-mode")) {
-                onRightClick { _, _, _, menu ->
-                    removeItemAndGiveCollectionCount(player, group, bypassMode, collection, false, menu.getPage(player))
-                }
-                onShiftRightClick { _, _, _, menu ->
-                    removeItemAndGiveCollectionCount(player, group, bypassMode, collection, true, menu.getPage(player))
-                }
-            }
         }
-    }
-
-    private fun removeItemAndGiveCollectionCount(
-        player: Player,
-        group: CollectionGroup,
-        bypassMode: Boolean,
-        collection: Collection,
-        removeAll: Boolean,
-        page: Int
-    ) {
-        if (!player.canManuallyCollect()) {
-            return
-        }
-
-        if (collection.hasConditions && !collection.conditions.areMet(player.toDispatcher(), EmptyProvidedHolder)) {
-            return
-        }
-
-        val removed = removeManualCollectItemsFromInventory(player, collection.manualCollectItems, removeAll)
-        if (removed <= 0) {
-            return
-        }
-
-        player.giveCollectionCount(collection, removed.toDouble())
-        open(player, group, bypassMode, page)
-    }
-
-    private fun Player.canManuallyCollect(): Boolean {
-        if (plugin.configYml.getStrings("collections.disabled-worlds").contains(world.name)) {
-            return false
-        }
-
-        if (gameMode == GameMode.SPECTATOR) {
-            return false
-        }
-
-        if (plugin.configYml.getBool("collections.prevent-while-creative") && gameMode == GameMode.CREATIVE) {
-            return false
-        }
-
-        if (plugin.configYml.getBool("collections.prevent-while-afk") && AFKManager.isAfk(this)) {
-            return false
-        }
-
-        return true
-    }
-
-    private fun removeManualCollectItemsFromInventory(
-        player: Player,
-        items: List<TestableItem>,
-        removeAll: Boolean
-    ): Int {
-        var removed = 0
-        val inventory = player.inventory
-        val storageSize = inventory.storageContents.size
-
-        for (slot in 0 until storageSize) {
-            val item = inventory.getItem(slot) ?: continue
-            if (item.type.isAir || items.none { it.matches(item) }) {
-                continue
-            }
-
-            if (removeAll) {
-                removed += item.amount
-                inventory.setItem(slot, null)
-                continue
-            }
-
-            item.amount -= 1
-            removed = 1
-            if (item.amount <= 0) {
-                inventory.setItem(slot, null)
-            } else {
-                inventory.setItem(slot, item)
-            }
-            break
-        }
-
-        return removed
     }
 
     private fun buildLockedCollectionSlot(

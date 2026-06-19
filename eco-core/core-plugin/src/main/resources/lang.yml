@@ -15,6 +15,10 @@ messages:
     chat: "&a&lUNLOCKED! &r&fYou can now progress &e%collection_name%&f."
     title: "&a&lUnlocked"
     subtitle: "&f%collection_name%"
+  count-up:
+    chat: "&aAdded &e%amount% &ato &e%collection_name%&a."
+    title: "&e%collection_name%"
+    subtitle: "&a+%amount%"
 
 placeholders:
   completed-true: "&aYes"

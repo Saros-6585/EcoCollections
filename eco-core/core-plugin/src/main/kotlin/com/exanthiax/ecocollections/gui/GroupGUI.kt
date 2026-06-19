@@ -1,7 +1,6 @@
 package com.exanthiax.ecocollections.gui
 
 import com.willfp.eco.core.gui.addPage
-import com.willfp.eco.core.gui.menu.Menu
 import com.willfp.eco.core.gui.menu
 import com.willfp.eco.core.gui.menu.MenuLayer
 import com.willfp.eco.core.gui.onEvent
@@ -40,7 +39,7 @@ import org.bukkit.inventory.ItemStack
 
 object GroupGUI {
 
-    fun open(player: Player, group: CollectionGroup, bypassMode: Boolean = false) {
+    fun open(player: Player, group: CollectionGroup, bypassMode: Boolean = false, page: Int = 1) {
         val titleTemplate = plugin.configYml.getString("gui.group.title")
             .replace("%group_name%", group.name)
         val rows = plugin.configYml.getInt("gui.group.rows")
@@ -52,6 +51,7 @@ object GroupGUI {
         val showLeaderboardRank = plugin.configYml.getBool("leaderboards.show-in-group-gui")
 
         val maxPage = collectionsInGroup.maxOfOrNull { it.guiPage }?.coerceAtLeast(1) ?: 1
+        val targetPage = page.coerceIn(1, maxPage)
 
         fun renderTitle(page: Int) = StringUtils.format(
             titleTemplate
@@ -60,9 +60,10 @@ object GroupGUI {
         )
 
         val theMenu = menu(rows) {
-            setTitle(renderTitle(1))
+            setTitle(renderTitle(targetPage))
 
             maxPages(maxPage)
+            defaultPage { targetPage }
 
             onEvent<PageChangeEvent> { eventPlayer, _, event ->
                 @Suppress("DEPRECATION")
@@ -125,7 +126,7 @@ object GroupGUI {
                             continue
                         }
 
-                        val builtSlot = buildCollectionSlot(player, collection, showLeaderboardRank)
+                        val builtSlot = buildCollectionSlot(player, group, bypassMode, collection, showLeaderboardRank)
                         if (builtSlot != null) {
                             setSlot(collection.guiRow, collection.guiColumn, builtSlot)
                         }
@@ -151,6 +152,8 @@ object GroupGUI {
 
     private fun buildCollectionSlot(
         player: Player,
+        group: CollectionGroup,
+        bypassMode: Boolean,
         collection: Collection,
         showLeaderboardRank: Boolean
     ): Slot? {
@@ -163,7 +166,7 @@ object GroupGUI {
                 return null
             }
 
-            return buildUnlockedCollectionSlot(player, collection, tier, showLeaderboardRank)
+            return buildUnlockedCollectionSlot(player, group, bypassMode, collection, tier, showLeaderboardRank)
         } else {
             if (collection.hideWhenLocked) {
                 return null
@@ -179,6 +182,8 @@ object GroupGUI {
 
     private fun buildUnlockedCollectionSlot(
         player: Player,
+        group: CollectionGroup,
+        bypassMode: Boolean,
         collection: Collection,
         tier: Int,
         showLeaderboardRank: Boolean
@@ -225,12 +230,11 @@ object GroupGUI {
             }
 
             if (manualCollectMode) {
-                onRightClick { clickPlayer, _, _, menu ->
-                    removeItemAndGiveCollectionCount(clickPlayer, menu, collection, false)
+                onRightClick { _, _, _, menu ->
+                    removeItemAndGiveCollectionCount(player, group, bypassMode, collection, false, menu.getPage(player))
                 }
-
-                onShiftRightClick { clickPlayer, _, _, menu ->
-                    removeItemAndGiveCollectionCount(clickPlayer, menu, collection, true)
+                onShiftRightClick { _, _, _, menu ->
+                    removeItemAndGiveCollectionCount(player, group, bypassMode, collection, true, menu.getPage(player))
                 }
             }
         }
@@ -238,9 +242,11 @@ object GroupGUI {
 
     private fun removeItemAndGiveCollectionCount(
         player: Player,
-        menu: Menu,
+        group: CollectionGroup,
+        bypassMode: Boolean,
         collection: Collection,
-        removeAll: Boolean
+        removeAll: Boolean,
+        page: Int
     ) {
         if (!player.canManuallyCollect()) {
             return
@@ -256,7 +262,7 @@ object GroupGUI {
         }
 
         player.giveCollectionCount(collection, removed.toDouble())
-        menu.refresh(player)
+        open(player, group, bypassMode, page)
     }
 
     private fun Player.canManuallyCollect(): Boolean {

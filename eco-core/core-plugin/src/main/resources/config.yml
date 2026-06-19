@@ -249,3 +249,12 @@ messages:
       sound: entity_experience_orb_pickup
       pitch: 1.0
       volume: 1.0
+  count-up:
+    enabled: false
+    chat: true
+    title: true
+    sound:
+      enabled: true
+      sound: entity_experience_orb_pickup
+      pitch: 1.0
+      volume: 1.0

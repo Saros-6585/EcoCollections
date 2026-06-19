@@ -86,6 +86,8 @@ fun Player.giveCollectionCount(collection: Collection, amount: Double) {
 
     this.profile.write(collection.countKey, newCount)
 
+    sendCountUpMessages(this, collection, amount)
+
     val previousTier = this.profile.read(collection.tierKey)
     val newTier = collection.getTierForCount(newCount)
 
@@ -158,7 +160,8 @@ private fun applyPlaceholders(
     player: Player,
     collection: Collection,
     previousTier: Int? = null,
-    tier: Int? = null
+    tier: Int? = null,
+    amount: Double? = null
 ): String {
     var result = message
         .replace("%player%", player.name)
@@ -192,7 +195,35 @@ private fun applyPlaceholders(
         }
     }
 
+    if (amount != null) {
+        result = result.replace("%amount%", amount.toLong().toString())
+    }
+
     return result.formatEco(player, formatPlaceholders = true)
+}
+
+private fun sendCountUpMessages(player: Player, collection: Collection, amount: Double) {
+    if (!plugin.configYml.getBool("messages.count-up.enabled")) return
+
+    if (plugin.configYml.getBool("messages.count-up.chat")) {
+        val chatMsg = plugin.langYml.getString("messages.count-up.chat")
+        player.sendMessage(applyPlaceholders(chatMsg, player, collection, amount = amount))
+    }
+
+    if (plugin.configYml.getBool("messages.count-up.title")) {
+        val title = applyPlaceholders(
+            plugin.langYml.getString("messages.count-up.title"),
+            player, collection, amount = amount
+        )
+        val subtitle = applyPlaceholders(
+            plugin.langYml.getString("messages.count-up.subtitle"),
+            player, collection, amount = amount
+        )
+        player.sendTitle(title, subtitle, 10, 40, 10)
+    }
+
+    PlayableSound.create(plugin.configYml.getSubsection("messages.count-up.sound"))
+        ?.playTo(player)
 }
 
 private fun sendTierUpMessages(player: Player, collection: Collection, previousTier: Int, tier: Int) {

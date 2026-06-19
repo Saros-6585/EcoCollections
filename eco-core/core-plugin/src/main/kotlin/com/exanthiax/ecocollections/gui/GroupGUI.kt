@@ -222,14 +222,12 @@ object GroupGUI {
             iconItem.itemMeta = meta
         }
 
-        val manualCollectMode = plugin.configYml.getBool("collections.manual-collect-mode")
-
         return slot(iconItem) {
             onLeftClick { _, _, _, _ ->
                 CollectionDetailGUI.open(player, collection)
             }
 
-            if (manualCollectMode) {
+            if (plugin.configYml.getBool("collections.manual-collect-mode")) {
                 onRightClick { _, _, _, menu ->
                     removeItemAndGiveCollectionCount(player, group, bypassMode, collection, false, menu.getPage(player))
                 }

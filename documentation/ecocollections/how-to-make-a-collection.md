@@ -64,6 +64,11 @@ gui:
     - ""
     - "&8Click to view tiers"
 
+# === Manual collection: GUI-submitted items ===
+manual-collect:
+  items:
+    - acacia_log # Used only when collections.manual-collect-mode is true
+
 # === Tiers: the count needed for each tier ===
 tier-requirements:
   - 50 # Tier 1
@@ -180,6 +185,19 @@ count-methods:
 :::warning Always filter block triggers
 For `mine_block` and `break_block`, set `player_placed: false`, or players can place and break the same block to farm count. The plugin warns on load when this filter is missing but does not enforce it.
 :::
+
+### Manual collect items
+
+When `collections.manual-collect-mode` is true in `config.yml`, `count-methods` are ignored. Players click a collection icon in the group GUI to submit one matching item, or Shift-click to submit all matching items.
+
+```yaml
+manual-collect:
+  items:
+    - acacia_log
+    - stripped_acacia_log
+```
+
+If `manual-collect.items` is omitted or empty, the collection has no manually submitted items.
 
 ### Effects
 

@@ -23,6 +23,11 @@ collections:
   # itself does not enforce filters; this only emits warnings.
   warn-on-missing-dupe-filter: true
 
+  # If true, players do not gain collection count automatically,
+  # and the `count-methods` option in each collection file is ignored.
+  # Players click collection icons in the GUI to submit matching items.
+  manual-collect-mode: false
+
 # GUI
 gui:
   cache-ttl: 5000 # Milliseconds rendered lore is cached before re-rendering
@@ -247,6 +252,15 @@ messages:
     enabled: true
     chat: true
     title: true
+    sound:
+      enabled: true
+      sound: entity_experience_orb_pickup
+      pitch: 1.0
+      volume: 1.0
+  count-up:
+    enabled: false
+    chat: true
+    title: false
     sound:
       enabled: true
       sound: entity_experience_orb_pickup

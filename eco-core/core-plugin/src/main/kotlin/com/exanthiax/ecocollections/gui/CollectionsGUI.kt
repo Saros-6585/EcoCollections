@@ -2,15 +2,18 @@ package com.exanthiax.ecocollections.gui
 
 import com.willfp.eco.core.config.BuildableConfig
 import com.willfp.eco.core.gui.addPage
-import com.willfp.eco.core.gui.addPageChanger
 import com.willfp.eco.core.gui.menu
+import com.willfp.eco.core.gui.menu.MenuLayer
+import com.willfp.eco.core.gui.onEvent
 import com.willfp.eco.core.gui.onLeftClick
+import com.willfp.eco.core.gui.page.PageChangeEvent
 import com.willfp.eco.core.gui.page.PageChanger
 import com.willfp.eco.core.gui.slot
 import com.willfp.eco.core.gui.slot.ConfigSlot
 import com.willfp.eco.core.gui.slot.FillerMask
 import com.willfp.eco.core.gui.slot.MaskItems
-import com.willfp.eco.core.sound.PlayableSound
+import com.willfp.eco.core.items.Items
+import com.willfp.eco.core.items.builder.ItemStackBuilder
 import com.willfp.eco.util.StringUtils
 import com.exanthiax.ecocollections.api.isCollectionComplete
 import com.exanthiax.ecocollections.collections.Collection
@@ -80,16 +83,45 @@ object CollectionsGUI {
         }
         val maxPage = visibleGroups.maxOfOrNull { it.guiPage }?.coerceAtLeast(1) ?: 1
 
-        val formattedTitle = StringUtils.format(titleTemplate)
-        val pageChangeSound = PlayableSound.create(plugin.configYml.getSubsection("gui.collections.page-change-sound"))
+        fun renderTitle(page: Int) = StringUtils.format(
+            titleTemplate
+                .replace("%page%", page.toString())
+                .replace("%max_page%", maxPage.toString())
+        )
 
         val theMenu = menu(rows) {
-            title = formattedTitle
+            setTitle(renderTitle(1))
 
             maxPages(maxPage)
 
-            addPageChanger(plugin.configYml, "gui.collections.prev-page", PageChanger.Direction.BACKWARDS, pageChangeSound)
-            addPageChanger(plugin.configYml, "gui.collections.next-page", PageChanger.Direction.FORWARDS, pageChangeSound)
+            onEvent<PageChangeEvent> { eventPlayer, _, event ->
+                @Suppress("DEPRECATION")
+                eventPlayer.openInventory.setTitle(renderTitle(event.newPage))
+            }
+
+            addComponent(
+                MenuLayer.TOP,
+                plugin.configYml.getInt("gui.collections.prev-page.location.row"),
+                plugin.configYml.getInt("gui.collections.prev-page.location.column"),
+                PageChanger(
+                    ItemStackBuilder(Items.lookup(plugin.configYml.getString("gui.collections.prev-page.material")))
+                        .setDisplayName(StringUtils.format(plugin.configYml.getString("gui.collections.prev-page.name")))
+                        .build(),
+                    PageChanger.Direction.BACKWARDS
+                )
+            )
+
+            addComponent(
+                MenuLayer.TOP,
+                plugin.configYml.getInt("gui.collections.next-page.location.row"),
+                plugin.configYml.getInt("gui.collections.next-page.location.column"),
+                PageChanger(
+                    ItemStackBuilder(Items.lookup(plugin.configYml.getString("gui.collections.next-page.material")))
+                        .setDisplayName(StringUtils.format(plugin.configYml.getString("gui.collections.next-page.name")))
+                        .build(),
+                    PageChanger.Direction.FORWARDS
+                )
+            )
 
             for (page in 1..maxPage) {
                 addPage(page) {

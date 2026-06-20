@@ -19,7 +19,7 @@ gui:
     - ""
     - "&8Click to view tiers"
 
-# Items that can be submitted in the GUI when collections.manual-collect-mode is true.
+# Items that can be submitted in the GUI when collections.manual-collect-mode.enabled is true.
 manual-collect:
   items:
     - acacia_log

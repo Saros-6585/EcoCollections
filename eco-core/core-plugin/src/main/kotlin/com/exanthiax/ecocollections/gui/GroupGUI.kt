@@ -15,7 +15,6 @@ import com.willfp.eco.core.gui.slot.FillerMask
 import com.willfp.eco.core.gui.slot.MaskItems
 import com.willfp.eco.core.gui.slot.Slot
 import com.willfp.eco.core.items.Items
-import com.willfp.eco.core.items.TestableItem
 import com.willfp.eco.core.items.builder.ItemStackBuilder
 import com.willfp.eco.core.sound.PlayableSound
 import com.willfp.eco.util.StringUtils
@@ -227,7 +226,7 @@ object GroupGUI {
                 CollectionDetailGUI.open(player, collection)
             }
 
-            if (plugin.configYml.getBool("collections.manual-collect-mode")) {
+            if (plugin.configYml.getBool("collections.manual-collect-mode.enabled")) {
                 onRightClick { _, _, _, menu ->
                     removeItemAndGiveCollectionCount(player, group, bypassMode, collection, false, menu.getPage(player))
                 }
@@ -254,7 +253,7 @@ object GroupGUI {
             return
         }
 
-        val removed = removeManualCollectItemsFromInventory(player, collection.manualCollectItems, removeAll)
+        val removed = removeManualCollectItemsFromInventory(player, collection, removeAll)
         if (removed <= 0) {
             return
         }
@@ -285,33 +284,57 @@ object GroupGUI {
 
     private fun removeManualCollectItemsFromInventory(
         player: Player,
-        items: List<TestableItem>,
+        collection: Collection,
         removeAll: Boolean
     ): Int {
+        val preventOverCount = plugin.configYml.getBool("collections.manual-collect-mode.prevent-over-count")
+        val currentCount = player.getCollectionCount(collection)
+        val maxCount = if (preventOverCount) {
+            collection.tierRequirements.lastOrNull() ?: return 0
+        } else {
+            null
+        }
+
+        if (maxCount != null && currentCount >= maxCount) {
+            return 0
+        }
+
         var removed = 0
         val inventory = player.inventory
         val storageSize = inventory.storageContents.size
 
         for (slot in 0 until storageSize) {
+            if (!removeAll && removed >= 1) {
+                break
+            }
+
+            if (maxCount != null && currentCount + removed >= maxCount) {
+                break
+            }
+
             val item = inventory.getItem(slot) ?: continue
-            if (item.type.isAir || items.none { it.matches(item) }) {
+            if (item.type.isAir || collection.manualCollectItems.none { it.matches(item) }) {
                 continue
             }
 
-            if (removeAll) {
-                removed += item.amount
-                inventory.setItem(slot, null)
-                continue
+            while (item.amount > 0) {
+                if (!removeAll && removed >= 1) {
+                    break
+                }
+
+                if (maxCount != null && currentCount + removed >= maxCount) {
+                    break
+                }
+
+                item.amount -= 1
+                removed += 1
             }
 
-            item.amount -= 1
-            removed = 1
             if (item.amount <= 0) {
                 inventory.setItem(slot, null)
             } else {
                 inventory.setItem(slot, item)
             }
-            break
         }
 
         return removed

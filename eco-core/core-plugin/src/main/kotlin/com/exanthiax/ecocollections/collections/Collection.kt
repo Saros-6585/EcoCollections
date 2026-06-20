@@ -61,7 +61,7 @@ class Collection(
     val maxTier: Int = tierRequirements.size
 
     val countMethods: List<Counter> =
-        if (plugin.configYml.getBool("collections.manual-collect-mode")) {
+        if (plugin.configYml.getBool("collections.manual-collect-mode.enabled")) {
             emptyList()
         } else {
             config.getSubsections("count-methods").mapNotNull {
@@ -166,7 +166,7 @@ class Collection(
     }
 
     override fun onRegister() {
-        if (plugin.configYml.getBool("collections.manual-collect-mode")) {
+        if (plugin.configYml.getBool("collections.manual-collect-mode.enabled")) {
             return
         }
 
@@ -313,7 +313,7 @@ class Collection(
 
     private fun checkDupeFilters() {
         if (!plugin.configYml.getBool("collections.warn-on-missing-dupe-filter")) return
-        if (plugin.configYml.getBool("collections.manual-collect-mode")) return
+        if (plugin.configYml.getBool("collections.manual-collect-mode.enabled")) return
 
         for (subsection in config.getSubsections("count-methods")) {
             val trigger = subsection.getString("trigger").lowercase()

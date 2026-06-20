@@ -15,10 +15,13 @@ collections:
   # itself does not enforce filters — this only emits warnings.
   warn-on-missing-dupe-filter: true
 
-  # If true, players do not gain collection count automatically,
-  # and the 'count-methods' option in each collection file is ignored.
-  # Players will be able to click on the item in the GUI to consume the item and get a count.
-  manual-collect-mode: false
+  manual-collect-mode:
+    # If true, players do not gain collection count automatically,
+    # and the 'count-methods' option in each collection file is ignored.
+    # Players will be able to click on the item in the GUI to consume the item and get a count.
+    enabled: false
+    # If true, players cannot submit more items than the collection's max tier requires.
+    prevent-over-count: true
 
 # GUI
 gui:

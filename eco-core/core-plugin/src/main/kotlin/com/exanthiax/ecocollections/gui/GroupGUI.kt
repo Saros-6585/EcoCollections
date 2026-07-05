@@ -109,11 +109,44 @@ object GroupGUI {
                             ConfigSlot(config)
                         )
                     }
+
+                    if (plugin.configYml.getBool("collections.manual-collect-mode.enabled")) {
+                        val unlockedCollectionsInGroup = collectionsInGroup.filter { player.isCollectionUnlocked(it) }
+                        setSlot(
+                            plugin.configYml.getInt("gui.group.collect-all.location.row"),
+                            plugin.configYml.getInt("gui.group.collect-all.location.column"),
+                            buildCollectAllSlot(player, group, bypassMode, unlockedCollectionsInGroup)
+                        )
+                    }
                 }
             }
         }
 
         theMenu.open(player)
+    }
+
+    private fun buildCollectAllSlot(
+        player: Player,
+        group: CollectionGroup,
+        bypassMode: Boolean,
+        collectionsInGroup: List<Collection>
+    ): Slot {
+        val collectAllMaterial = plugin.configYml.getString("gui.group.collect-all.material")
+        val collectAllName = plugin.configYml.getString("gui.group.collect-all.name")
+
+        val collectAllButtonItem = Items.lookup(collectAllMaterial).item.clone()
+        val meta = collectAllButtonItem.itemMeta
+
+        if (meta != null) {
+            meta.setDisplayName(StringUtils.format(collectAllName))
+            collectAllButtonItem.itemMeta = meta
+        }
+
+        return slot(collectAllButtonItem) {
+            onLeftClick { _, _, _, menu ->
+                manualCollectAllItems(player, group, bypassMode, collectionsInGroup, menu.getPage(player))
+            }
+        }
     }
 
     private fun buildCollectionSlot(
@@ -229,6 +262,31 @@ object GroupGUI {
 
         player.giveCollectionCount(collection, removed.toDouble())
         open(player, group, bypassMode, page)
+    }
+
+    private fun manualCollectAllItems(
+        player: Player,
+        group: CollectionGroup,
+        bypassMode: Boolean,
+        collectionsInGroup: List<Collection>,
+        page: Int
+    ) {
+        if (!player.canGainCollectionProgress()) return
+
+        var collected = false
+        for (collection in collectionsInGroup) {
+            if (collection.hasConditions && !collection.conditions.areMet(player.toDispatcher(), EmptyProvidedHolder)) continue
+
+            val removed = removeManualCollectItemsFromInventory(player, collection, true)
+            if (removed <= 0) continue
+
+            collected = true
+            player.giveCollectionCount(collection, removed.toDouble())
+        }
+
+        if (collected) {
+            open(player, group, bypassMode, page)
+        }
     }
 
     private fun sendManualCollectDeniedMessage(player: Player) {

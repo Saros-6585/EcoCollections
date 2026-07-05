@@ -96,6 +96,12 @@ gui:
       location:
         row: 6
         column: 6
+    collect-all:
+      material: "chest"
+      name: "&aCollect All"
+      location:
+        row: 6
+        column: 5
     page-change-sound:
       enabled: true
       sound: ui.button.click

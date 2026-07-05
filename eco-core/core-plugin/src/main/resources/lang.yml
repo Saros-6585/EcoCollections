@@ -19,6 +19,10 @@ messages:
     chat: "&aAdded &e%amount% &ato &e%collection_name%&a."
     title: "&e%collection_name%"
     subtitle: "&a+%amount%"
+  manual-collect-denied:
+    chat: "&cYou can't collect items right now."
+    title: "&cCollect Denied"
+    subtitle: "&7Failed to meet conditions"
 
 placeholders:
   completed-true: "&aYes"

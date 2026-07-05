@@ -212,14 +212,41 @@ object GroupGUI {
         removeAll: Boolean,
         page: Int
     ) {
-        if (!player.canGainCollectionProgress()) return
-        if (collection.hasConditions && !collection.conditions.areMet(player.toDispatcher(), EmptyProvidedHolder)) return
+        if (!player.canGainCollectionProgress()) {
+            sendManualCollectDeniedMessage(player)
+            return
+        }
+
+        if (collection.hasConditions && !collection.conditions.areMet(player.toDispatcher(), EmptyProvidedHolder)) {
+            sendManualCollectDeniedMessage(player)
+            return
+        }
 
         val removed = removeManualCollectItemsFromInventory(player, collection, removeAll)
-        if (removed <= 0) return
+        if (removed <= 0) {
+            return
+        }
 
         player.giveCollectionCount(collection, removed.toDouble())
         open(player, group, bypassMode, page)
+    }
+
+    private fun sendManualCollectDeniedMessage(player: Player) {
+        if (!plugin.configYml.getBool("messages.manual-collect-denied.enabled")) return
+
+        if (plugin.configYml.getBool("messages.manual-collect-denied.chat")) {
+            val message = plugin.langYml.getString("messages.manual-collect-denied.chat")
+            player.sendMessage(StringUtils.format(message))
+        }
+
+        if (plugin.configYml.getBool("messages.manual-collect-denied.title")) {
+            val title = plugin.langYml.getString("messages.manual-collect-denied.title")
+            val subtitle = plugin.langYml.getString("messages.manual-collect-denied.subtitle")
+            player.sendTitle(StringUtils.format(title), StringUtils.format(subtitle), 10, 40, 10)
+        }
+
+        PlayableSound.create(plugin.configYml.getSubsection("messages.manual-collect-denied.sound"))
+            ?.playTo(player)
     }
 
     private fun removeManualCollectItemsFromInventory(

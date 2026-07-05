@@ -11,13 +11,16 @@ class CollectionCountAccumulator(
     private val collection: Collection
 ) : Accumulator {
     override fun accept(player: Player, count: Double) {
-        if (player.isInDisabledWorld) return
-        if (player.gameMode in setOf(GameMode.CREATIVE, GameMode.SPECTATOR)) return
-        if (plugin.configYml.getBool("collections.prevent-while-afk") && AFKManager.isAfk(player)) return
+        if (!player.canGainCollectionProgress()) return
 
         player.giveCollectionCount(collection, count)
     }
 }
 
-private val Player.isInDisabledWorld: Boolean
-    get() = plugin.configYml.getStrings("collections.disabled-worlds").contains(world.name)
+fun Player.canGainCollectionProgress(): Boolean {
+    if (plugin.configYml.getStrings("collections.disabled-worlds").contains(world.name)) return false
+    if (gameMode in setOf(GameMode.CREATIVE, GameMode.SPECTATOR)) return false
+    if (plugin.configYml.getBool("collections.prevent-while-afk") && AFKManager.isAfk(this)) return false
+
+    return true
+}

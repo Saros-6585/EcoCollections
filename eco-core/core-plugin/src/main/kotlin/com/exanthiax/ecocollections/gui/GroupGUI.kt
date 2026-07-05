@@ -1,5 +1,23 @@
 package com.exanthiax.ecocollections.gui
 
+import com.willfp.eco.core.gui.addPage
+import com.willfp.eco.core.gui.addPageChanger
+import com.willfp.eco.core.gui.menu
+import com.willfp.eco.core.gui.onLeftClick
+import com.willfp.eco.core.gui.onRightClick
+import com.willfp.eco.core.gui.onShiftRightClick
+import com.willfp.eco.core.gui.page.PageChanger
+import com.willfp.eco.core.gui.slot
+import com.willfp.eco.core.gui.slot.ConfigSlot
+import com.willfp.eco.core.gui.slot.FillerMask
+import com.willfp.eco.core.gui.slot.MaskItems
+import com.willfp.eco.core.gui.slot.Slot
+import com.willfp.eco.core.items.Items
+import com.willfp.eco.core.sound.PlayableSound
+import com.willfp.eco.util.StringUtils
+import com.willfp.eco.util.toNumeral
+import com.willfp.libreforge.EmptyProvidedHolder
+import com.willfp.libreforge.toDispatcher
 import com.exanthiax.ecocollections.api.getCollectionCount
 import com.exanthiax.ecocollections.api.getCollectionTier
 import com.exanthiax.ecocollections.api.giveCollectionCount
@@ -7,22 +25,9 @@ import com.exanthiax.ecocollections.api.isCollectionUnlocked
 import com.exanthiax.ecocollections.collections.Collection
 import com.exanthiax.ecocollections.collections.CollectionRank
 import com.exanthiax.ecocollections.collections.CollectionsLeaderboard.getCollectionRank
+import com.exanthiax.ecocollections.collections.canGainCollectionProgress
 import com.exanthiax.ecocollections.groups.CollectionGroup
 import com.exanthiax.ecocollections.plugin
-import com.willfp.eco.core.gui.*
-import com.willfp.eco.core.gui.page.PageChanger
-import com.willfp.eco.core.gui.slot.ConfigSlot
-import com.willfp.eco.core.gui.slot.FillerMask
-import com.willfp.eco.core.gui.slot.MaskItems
-import com.willfp.eco.core.gui.slot.Slot
-import com.willfp.eco.core.integrations.afk.AFKManager
-import com.willfp.eco.core.items.Items
-import com.willfp.eco.core.sound.PlayableSound
-import com.willfp.eco.util.StringUtils
-import com.willfp.eco.util.toNumeral
-import com.willfp.libreforge.EmptyProvidedHolder
-import com.willfp.libreforge.toDispatcher
-import org.bukkit.GameMode
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
@@ -207,41 +212,14 @@ object GroupGUI {
         removeAll: Boolean,
         page: Int
     ) {
-        if (!player.canManuallyCollect()) {
-            return
-        }
-
-        if (collection.hasConditions && !collection.conditions.areMet(player.toDispatcher(), EmptyProvidedHolder)) {
-            return
-        }
+        if (!player.canGainCollectionProgress()) return
+        if (collection.hasConditions && !collection.conditions.areMet(player.toDispatcher(), EmptyProvidedHolder)) return
 
         val removed = removeManualCollectItemsFromInventory(player, collection, removeAll)
-        if (removed <= 0) {
-            return
-        }
+        if (removed <= 0) return
 
         player.giveCollectionCount(collection, removed.toDouble())
         open(player, group, bypassMode, page)
-    }
-
-    private fun Player.canManuallyCollect(): Boolean {
-        if (plugin.configYml.getStrings("collections.disabled-worlds").contains(world.name)) {
-            return false
-        }
-
-        if (gameMode == GameMode.SPECTATOR) {
-            return false
-        }
-
-        if (plugin.configYml.getBool("collections.prevent-while-creative") && gameMode == GameMode.CREATIVE) {
-            return false
-        }
-
-        if (plugin.configYml.getBool("collections.prevent-while-afk") && AFKManager.isAfk(this)) {
-            return false
-        }
-
-        return true
     }
 
     private fun removeManualCollectItemsFromInventory(
@@ -279,18 +257,10 @@ object GroupGUI {
                 continue
             }
 
-            while (item.amount > 0) {
-                if (!removeAll && removed >= 1) {
-                    break
-                }
-
-                if (maxCount != null && currentCount + removed >= maxCount) {
-                    break
-                }
-
-                item.amount -= 1
-                removed += 1
-            }
+            val remainingCap = if (maxCount != null) (maxCount - currentCount - removed).toInt().coerceAtLeast(0) else Int.MAX_VALUE
+            val take = minOf(item.amount, if (removeAll) remainingCap else 1)
+            item.amount -= take
+            removed += take
 
             if (item.amount <= 0) {
                 inventory.setItem(slot, null)

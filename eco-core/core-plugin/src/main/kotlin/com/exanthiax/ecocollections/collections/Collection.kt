@@ -60,12 +60,17 @@ class Collection(
 
     val maxTier: Int = tierRequirements.size
 
+    val manualCollectModeEnabled: Boolean = plugin.configYml.getBool("collections.manual-collect-mode.enabled")
+
     val countMethods: List<Counter> =
-        if (plugin.configYml.getBool("collections.manual-collect-mode.enabled")) {
+        if (manualCollectModeEnabled) {
             emptyList()
         } else {
             config.getSubsections("count-methods").mapNotNull {
-                Counters.compile(it, ViolationContext(plugin, "Collection $id count-methods"))
+                Counters.compile(
+                    it,
+                    ViolationContext(plugin, "Collection $id count-methods")
+                )
             }
         }
 
@@ -166,9 +171,7 @@ class Collection(
     }
 
     override fun onRegister() {
-        if (plugin.configYml.getBool("collections.manual-collect-mode.enabled")) {
-            return
-        }
+        if (manualCollectModeEnabled) return
 
         val accumulator = CollectionCountAccumulator(this)
         for (counter in countMethods) {
@@ -313,7 +316,7 @@ class Collection(
 
     private fun checkDupeFilters() {
         if (!plugin.configYml.getBool("collections.warn-on-missing-dupe-filter")) return
-        if (plugin.configYml.getBool("collections.manual-collect-mode.enabled")) return
+        if (manualCollectModeEnabled) return
 
         for (subsection in config.getSubsections("count-methods")) {
             val trigger = subsection.getString("trigger").lowercase()

@@ -341,7 +341,7 @@ object GroupGUI {
             }
 
             val item = inventory.getItem(slot) ?: continue
-            if (item.type.isAir || collection.manualCollectItems.none { it.matches(item) }) {
+            if (item.type.isAir || collection.manualCollectItems.none { item.isSimilar(it.item) }) {
                 continue
             }
 

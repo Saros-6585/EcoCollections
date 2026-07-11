@@ -271,7 +271,10 @@ object GroupGUI {
         collectionsInGroup: List<Collection>,
         page: Int
     ) {
-        if (!player.canGainCollectionProgress()) return
+        if (!player.canGainCollectionProgress()) {
+            sendManualCollectDeniedMessage(player)
+            return
+        }
 
         var collected = false
         for (collection in collectionsInGroup) {

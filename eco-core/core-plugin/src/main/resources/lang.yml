@@ -54,3 +54,9 @@ groups:
 leaderboard-rank-exact: "&7Your rank: &e#%rank%"
 leaderboard-rank-percent: "&7Your rank: &eTop %percent%%"
 leaderboard-rank-unranked: "&7Your rank: &8Unranked"
+
+lore:
+  manual-collect-one:
+    - "&7Right Click: Collect One"
+  manual-collect-all:
+    - "&7Shift + Right Click: Collect All"

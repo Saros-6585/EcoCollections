@@ -210,6 +210,11 @@ object GroupGUI {
                 }
             }
 
+            if (plugin.configYml.getBool("collections.manual-collect-mode.enabled")) {
+                for (line in plugin.langYml.getStrings("lore.manual-collect-one")) lore.add(StringUtils.format(line))
+                for (line in plugin.langYml.getStrings("lore.manual-collect-all")) lore.add(StringUtils.format(line))
+            }
+
             if (showLeaderboardRank) {
                 val rankLine = formatRankLore(player, collection)
                 if (rankLine != null) {
